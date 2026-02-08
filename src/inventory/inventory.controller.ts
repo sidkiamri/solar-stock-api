@@ -1,24 +1,31 @@
 import { Controller, Post, Get, Body, Patch, Param, UseGuards, Req } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('inventory')
+@UseGuards(JwtAuthGuard) // This LOCKS all stock routes. No token = No access.
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Post()
-  async add(@Body() body: any) {
-    // For the prototype, we pass the userId in the body. 
-    // In a final app, we extract it from the JWT Token.
-    return this.inventoryService.create(body, body.userId);
+  async add(@Body() body: any, @Req() req) {
+    // req.user.userId comes from the Token!
+    return this.inventoryService.create(body, req.user.userId);
   }
 
-  @Get(':userId')
-  async get(@Param('userId') userId: string) {
-    return this.inventoryService.findAll(userId);
+  @Get()
+  async get(@Req() req) {
+    // Returns only items for THIS user
+    return this.inventoryService.findAll(req.user.userId);
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body('quantity') quantity: number) {
-    return this.inventoryService.updateQuantity(id, quantity);
+  async update(@Param('id') id: string, @Body('quantity') quantity: number, @Req() req) {
+    return this.inventoryService.updateQuantity(id, quantity, req.user.userId);
+  }
+
+  @Get('history')
+  async getHistory(@Req() req) {
+    return this.inventoryService.getHistory(req.user.userId);
   }
 }
